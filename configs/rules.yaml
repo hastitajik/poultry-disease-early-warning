@@ -1,0 +1,84 @@
+# Alert rules. Evaluated on pen-level metrics after every 5-minute slot.
+#
+# kind: zscore    -> compares the metric with its baseline (same flock age & hour of day)
+#                    robust z = (value - median) / (1.4826 * MAD)
+# kind: threshold -> fixed limits (used where a baseline makes no sense)
+#
+# persist  = how many consecutive slots must break the rule before an event is raised
+# cooldown = minutes before the same rule may open a NEW event (otherwise the open one is updated)
+
+rules:
+  # ---- Signal 1: flock activity -------------------------------------------
+  - id: activity_drop
+    signal: activity
+    metric: activity_index
+    kind: zscore
+    direction: low
+    warn: 2.0
+    crit: 3.0
+    persist: 3
+    cooldown_min: 120
+
+  - id: activity_spike
+    signal: activity
+    metric: activity_index
+    kind: zscore
+    direction: high
+    warn: 3.0
+    crit: 4.5
+    persist: 2
+    cooldown_min: 60
+
+  # ---- Signal 2: spatial distribution ---------------------------------------
+  - id: feeder_drinker_avoidance
+    signal: distribution
+    metric: resource_frac
+    kind: zscore
+    direction: low
+    warn: 2.0
+    crit: 3.0
+    persist: 3
+    cooldown_min: 120
+
+  - id: periphery_crowding
+    signal: distribution
+    metric: periphery_frac
+    kind: zscore
+    direction: high
+    warn: 2.0
+    crit: 3.0
+    persist: 3
+    cooldown_min: 120
+
+  # ---- Signal 3: mortality -------------------------------------------------
+  # still-bird candidates raise their own events (see analysis.mortality in farm.yaml)
+  - id: daily_mortality
+    signal: mortality
+    metric: daily_mortality_pct
+    kind: threshold
+    op: ">"
+    warn: 0.2          # % of current birds per day — ask your vet for flock-specific limits
+    crit: 0.5
+    persist: 1
+    cooldown_min: 720
+
+  # ---- Signal 4: circadian rhythm ------------------------------------------
+  - id: rhythm_loss
+    signal: circadian
+    metric: rhythm_corr
+    kind: threshold
+    op: "<"
+    warn: 0.5
+    crit: 0.2
+    persist: 6
+    cooldown_min: 360
+
+  - id: rhythm_flattening
+    signal: circadian
+    metric: rhythm_amplitude
+    kind: threshold
+    op: "<"
+    warn: 0.6          # today's peak-to-trough / usual peak-to-trough
+    crit: 0.35
+    persist: 6
+    cooldown_min: 360

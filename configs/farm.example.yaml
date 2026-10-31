@@ -1,0 +1,122 @@
+# Poultry EWS — farm configuration
+# Copy to configs/farm.yaml and edit. Values marked PLACEHOLDER must be measured on site.
+
+farm:
+  name: "مرغداری نمونه"
+  timezone: "Asia/Tehran"
+  data_dir: "data"                 # sqlite db, grids, snapshots
+  db_file: "pews.sqlite"
+
+flock:
+  id: "flock-2025-11"
+  placement_date: "2025-11-17"     # day 0 = placement day
+  initial_count: 150               # PLACEHOLDER: birds placed in all pens
+  # Approximate top-view body area of one bird (m^2) by age in days.
+  # Used to size blobs for mortality detection. Tune from your own frames.
+  bird_area_m2_by_age:
+    0: 0.0025
+    7: 0.0060
+    14: 0.0150
+    21: 0.0250
+    28: 0.0350
+    35: 0.0450
+    42: 0.0550
+
+# A pen is one physical floor area. Cameras that look at the same pen are fused
+# into one floor map. If your three cameras watch three separate rooms, make
+# three pens with one camera each.
+pens:
+  - id: "pen1"
+    name: "سالن ۱"
+    width_m: 2.6                   # PLACEHOLDER: inner width (x axis)
+    length_m: 5.8                  # PLACEHOLDER: inner length (y axis, away from camera = 0)
+    wall_band_m: 0.30              # distance from long walls counted as "wall"
+    corner_size_m: 0.60            # square at each corner counted as "corner"
+    # Equipment in FLOOR coordinates (metres). r = zone radius around it
+    # (where a bird counts as eating / drinking), not the device size.
+    # The layout changes during the flock (chick trays -> tube feeders), so
+    # each layout has a valid_from date. `pews calibrate` prints metres for clicks.
+    # Values below were estimated from data/samples with the rough calibration.
+    layouts:
+      - valid_from: "2025-11-01"       # chick stage: trays + small jar drinkers
+        feeders:
+          - {x: 0.48, y: 2.00, r: 0.35}
+          - {x: 2.01, y: 0.57, r: 0.35}
+          - {x: 2.02, y: 2.61, r: 0.35}
+          - {x: 0.51, y: 4.71, r: 0.35}
+        drinkers:
+          - {x: 0.58, y: 0.80, r: 0.25}
+          - {x: 2.15, y: 1.37, r: 0.25}
+          - {x: 1.28, y: 2.00, r: 0.25}
+          - {x: 0.50, y: 2.89, r: 0.25}
+          - {x: 1.27, y: 4.01, r: 0.25}
+          - {x: 0.45, y: 5.41, r: 0.25}
+          - {x: 2.06, y: 5.27, r: 0.25}
+          - {x: 0.51, y: 3.89, r: 0.30}
+          - {x: 2.06, y: 3.89, r: 0.30}
+      - valid_from: "2025-12-01"       # grower stage: tube feeders + bell drinkers
+        feeders:
+          - {x: 1.33, y: 0.97, r: 0.40}
+          - {x: 1.35, y: 2.40, r: 0.45}
+          - {x: 1.37, y: 3.80, r: 0.45}
+          - {x: 1.28, y: 5.35, r: 0.50}
+        drinkers:
+          - {x: 0.62, y: 1.26, r: 0.40}
+          - {x: 2.03, y: 1.26, r: 0.40}
+          - {x: 0.56, y: 3.93, r: 0.45}
+          - {x: 2.03, y: 4.08, r: 0.45}
+    cameras: ["cam1"]
+
+  # - id: "pen2"
+  #   ...
+  #   cameras: ["cam2"]
+
+cameras:
+  - id: "cam1"
+    pen: "pen1"
+    calibration: "configs/cameras/cam1.example.yaml"
+    input_dir: "data/raw/cam1"     # where the DVR exports 5-minute clips
+    source_fps: 15                 # fallback when the container does not report fps
+    # Optional: regex with named groups (year, month, day, hour, minute, second)
+    # to read the RECORDING time from the filename. Leave empty for built-in rules.
+    filename_regex: ""
+
+analysis:
+  work_width: 1152                 # frames are resized to this width before analysis
+  analysis_fps: 2.0                # frames per second sampled from each clip
+  floor_px_per_m: 100              # resolution of the rectified floor map
+  slot_minutes: 5                  # clips are grouped into 5-minute time slots
+  segmenter:
+    kind: "color"                  # color | yolo | external
+    # color segmenter (stage 1, no training needed)
+    contrast: 18                   # bird must be this much brighter than local floor (LAB L)
+    v_min: 140
+    s_max: 120
+    # yolo segmenter (stage 2)
+    weights: "models/broiler-seg.pt"
+    conf: 0.35
+    # external detections (e.g. exported from MVBroTrack): <clip>.jsonl next to the clip
+    external_suffix: ".dets.jsonl"
+  activity:
+    moving_speed_m_s: 0.04         # a bird pixel faster than this counts as "moving"
+  mortality:
+    still_speed_m_s: 0.015         # slower than this = not moving
+    max_moving_frac: 0.05          # a pixel may move in at most 5% of frames to be "still"
+    min_presence_frac: 0.90        # bird must be present in 90% of frames
+    min_area_factor: 0.4           # blob area relative to expected bird area
+    max_area_factor: 2.5
+    match_radius_m: 0.20           # same candidate across clips if within this distance
+    alert_after_min: 120           # still for this long during flock activity -> alert
+    min_flock_activity: 0.03       # pen activity_index must reach this at least once meanwhile
+  circadian:
+    min_hours: 18                  # hours of data needed in the last 24 h
+    baseline_days: [2, 7]          # compare with the hourly profile of 2..7 days ago
+
+baseline:
+  hour_window: 1                   # +- hours of day
+  days_back: [1, 4]                # previous days of the same flock
+  other_flocks_age_window: 2       # +- days of age from older flocks
+  min_samples: 6
+
+notifications:
+  webhook_url: ""                  # POST JSON for every new/escalated event (e.g. a bot)

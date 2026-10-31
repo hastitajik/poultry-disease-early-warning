@@ -1,0 +1,10 @@
+numpy>=1.24
+opencv-python-headless>=4.8
+PyYAML>=6.0
+fastapi>=0.110
+uvicorn>=0.27
+# optional, for a trained detector (stage 2):
+# ultralytics>=8.3
+# dev:
+# pytest>=8
+# httpx>=0.27

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پایش سلامت گله</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --tile:#F3F5F2;      /* barn wall tile */
+  --paper:#FFFFFF;
+  --ink:#1F2A24;
+  --muted:#5E6B64;
+  --line:#D9DED9;
+  --litter:#8A6F4A;
+  --ok:#2F7D5B;
+  --warn:#B97C00;
+  --crit:#C2271D;
+  --learn:#7A8580;
+  --focus:#1D5FD1;
+}
+@media (prefers-color-scheme: dark){
+  :root{--tile:#151A17;--paper:#1C231F;--ink:#E7ECE8;--muted:#9AA7A0;--line:#2E3832;
+        --ok:#4FB386;--warn:#E0A526;--crit:#F0544A;--learn:#8C9792;--focus:#7FA8FF}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--tile);color:var(--ink);
+  font-family:Vazirmatn,Tahoma,"Segoe UI",sans-serif;font-size:15px;line-height:1.6}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 28px;
+  padding:20px 24px 14px;border-bottom:1px solid var(--line);background:var(--paper)}
+.age{display:flex;align-items:baseline;gap:8px}
+.age b{font-size:44px;font-weight:800;line-height:1;letter-spacing:-.5px}
+.age span{color:var(--muted)}
+.farm h1{margin:0;font-size:18px;font-weight:700}
+.farm p{margin:0;color:var(--muted);font-size:13px}
+.pens{display:flex;gap:6px;margin-inline-start:auto}
+.pens button{border:1px solid var(--line);background:transparent;border-radius:999px;
+  padding:4px 14px;cursor:pointer}
+.pens button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.fresh{font-size:13px;color:var(--muted)}
+.fresh.stale{color:var(--crit);font-weight:700}
+
+main{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:20px;padding:20px 24px;
+  max-width:1400px;margin:0 auto}
+@media (max-width:900px){main{grid-template-columns:1fr;padding:14px}
+  main>div:last-child{order:-1}  /* on a phone the signals come first */}
+section h2{font-size:15px;font-weight:700;margin:0 0 10px}
+
+/* floor plan: the centrepiece */
+.plan{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:14px}
+.plan canvas{width:100%;display:block;border-radius:3px;background:#2a2620}
+.plan .key{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.plan .key i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:4px;vertical-align:-1px}
+.plan .when{font-size:12px;color:var(--muted);margin:0 0 8px}
+
+/* signals */
+.signals{display:flex;flex-direction:column;gap:0;background:var(--paper);
+  border:1px solid var(--line);border-radius:6px}
+.sig{display:grid;grid-template-columns:6px 1fr minmax(180px,42%);gap:14px;padding:14px 16px 14px 14px;
+  border-bottom:1px solid var(--line);align-items:center}
+.sig:last-child{border-bottom:0}
+.sig .bar{align-self:stretch;border-radius:3px;background:var(--learn)}
+.sig[data-state=ok] .bar{background:var(--ok)}
+.sig[data-state=warning] .bar{background:var(--warn)}
+.sig[data-state=critical] .bar{background:var(--crit)}
+.sig h3{margin:0;font-size:16px;font-weight:700;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.state{font-size:12px;font-weight:500;padding:1px 8px;border-radius:4px;background:var(--tile);color:var(--muted)}
+.sig[data-state=ok] .state{color:var(--ok)}
+.sig[data-state=warning] .state{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.sig[data-state=critical] .state{color:#fff;background:var(--crit)}
+.sig .val{font-size:13px;color:var(--muted);margin-top:2px}
+.sig .val b{color:var(--ink);font-size:20px;font-weight:700;margin-inline-end:4px}
+.sig canvas{width:100%;height:56px;display:block}
+@media (max-width:600px){.sig{grid-template-columns:6px 1fr}.sig canvas{grid-column:2}}
+
+/* events */
+.events{margin-top:20px}
+.ev{background:var(--paper);border:1px solid var(--line);border-inline-start:5px solid var(--warn);
+  border-radius:6px;padding:12px 14px;margin-bottom:10px}
+.ev.critical{border-inline-start-color:var(--crit)}
+.ev.acknowledged{opacity:.7}
+.ev header{all:unset;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ev .t{font-weight:700}
+.ev .meta{font-size:12px;color:var(--muted)}
+.ev p{margin:6px 0}
+.ev ul{margin:4px 0 8px;padding-inline-start:20px;font-size:14px}
+.ev .shots{display:flex;gap:8px;overflow-x:auto}
+.ev .shots img{height:110px;border-radius:4px;border:1px solid var(--line)}
+.ev form{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.ev input{flex:1 1 140px;border:1px solid var(--line);border-radius:4px;padding:5px 8px;background:var(--tile)}
+.btn{border:0;border-radius:4px;padding:6px 14px;cursor:pointer;background:var(--ink);color:var(--paper);font-weight:500}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.red{background:var(--crit);color:#fff}
+.empty{color:var(--muted);background:var(--paper);border:1px dashed var(--line);border-radius:6px;padding:14px}
+
+.cams{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.cams figure{margin:0}
+.cams img{width:100%;border-radius:4px;border:1px solid var(--line);display:block}
+.cams figcaption{font-size:12px;color:var(--muted)}
+.log{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:14px;margin-top:20px}
+.log form{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.log label{display:flex;flex-direction:column;font-size:13px;color:var(--muted)}
+.log input{border:1px solid var(--line);border-radius:4px;padding:5px 8px;background:var(--tile);width:120px}
+.log .note{width:220px}
+.toast{position:fixed;inset-inline-start:20px;bottom:20px;background:var(--ink);color:var(--paper);
+  padding:8px 14px;border-radius:4px;display:none}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+</style>
+</head>
+<body>
+<header>
+  <div class="age" aria-live="polite"><b id="age">–</b><span id="ageLabel">روز از دوره</span></div>
+  <div class="farm"><h1 id="farm">پایش سلامت گله</h1><p id="flock"></p></div>
+  <nav class="pens" id="pens" aria-label="سالن"></nav>
+  <div class="fresh" id="fresh"></div>
+</header>
+
+<main>
+  <div>
+    <section class="plan" aria-labelledby="planT">
+      <h2 id="planT">پراکندگی پرنده‌ها روی کف سالن</h2>
+      <p class="when" id="planWhen"></p>
+      <canvas id="plan" width="260" height="580" role="img" aria-label="نقشه‌ی تراکم پرنده‌ها"></canvas>
+      <div class="key">
+        <span><i style="background:#F5F1E6"></i>تراکم بالا</span>
+        <span><i style="background:#E8A33D"></i>دانخوری</span>
+        <span><i style="background:#3FA7D6"></i>آبخوری</span>
+        <span><i style="background:#F0544A"></i>مرغ بی‌حرکت</span>
+        <span><i style="background:#55606B;border-radius:0"></i>خارج از دید دوربین</span>
+      </div>
+    </section>
+    <section style="margin-top:20px" aria-labelledby="camT">
+      <h2 id="camT">آخرین تصویر دوربین‌ها</h2>
+      <div class="cams" id="cams"></div>
+    </section>
+  </div>
+
+  <div>
+    <section aria-labelledby="sigT">
+      <h2 id="sigT">چهار سیگنال هشدار</h2>
+      <div class="signals" id="signals"></div>
+    </section>
+
+    <section class="events" aria-labelledby="evT">
+      <h2 id="evT">هشدارهای باز</h2>
+      <div id="events"></div>
+    </section>
+
+    <section class="log" aria-labelledby="logT">
+      <h2 id="logT">ثبت تلفات روزانه</h2>
+      <form id="logForm">
+        <label>تاریخ<input type="date" name="date" required></label>
+        <label>تلفات<input type="number" name="deaths" min="0" value="0" required></label>
+        <label>حذفی<input type="number" name="culls" min="0" value="0"></label>
+        <label>یادداشت<input class="note" name="note"></label>
+        <button class="btn" type="submit">ثبت تلفات</button>
+      </form>
+    </section>
+  </div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const SIG = [
+  {key:"activity", metric:"activity_index", label:"سهم پرنده‌های در حال حرکت", fmt:v=>pct(v)},
+  {key:"distribution", metric:"resource_frac", label:"سهم پرنده‌ها کنار دان و آب", fmt:v=>pct(v),
+     extra:"periphery_frac", extraLabel:"کنار دیوار و گوشه"},
+  {key:"mortality", metric:"still_candidates", label:"مرغ بی‌حرکتِ نیازمند بازدید", fmt:v=>fa(v,0)},
+  {key:"circadian", metric:"rhythm_corr", label:"شباهت ریتم امروز با روزهای قبل", fmt:v=>fa(v,2),
+     extra:"rhythm_amplitude"},
+];
+const STATE = {ok:"عادی", warning:"هشدار", critical:"بحرانی", learning:"در حال یادگیری"};
+let PEN = null, OV = null;
+
+const fa=(v,d=0)=>v==null?"–":Number(v).toLocaleString("fa-IR",{maximumFractionDigits:d,minimumFractionDigits:d});
+const pct=v=>v==null?"–":fa(v*100,0)+"٪";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const time=t=>t?new Date(t).toLocaleString("fa-IR",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+async function api(path,opt){const r=await fetch(path,opt);if(!r.ok)throw new Error(await r.text());return r.json()}
+function toast(msg){const t=$("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",2500)}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+
+async function load(){
+  OV = await api("/api/overview");
+  $("age").textContent = fa(OV.age_days);
+  $("farm").textContent = OV.farm || "پایش سلامت گله";
+  $("flock").textContent = `دوره ${OV.flock} — جوجه‌ریزی ${new Date(OV.placement_date).toLocaleDateString("fa-IR")}`;
+  if(!PEN) PEN = OV.pens[0]?.id;
+  $("pens").innerHTML = OV.pens.map(p=>`<button aria-pressed="${p.id===PEN}" data-pen="${p.id}">${esc(p.name)}</button>`).join("");
+  $("pens").querySelectorAll("button").forEach(b=>b.onclick=()=>{PEN=b.dataset.pen;render()});
+  await render();
+}
+
+async function render(){
+  const pen = OV.pens.find(p=>p.id===PEN); if(!pen) return;
+  $("pens").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.pen===PEN));
+  const fr=$("fresh");
+  if(pen.stale_min==null){fr.textContent="هنوز ویدیویی پردازش نشده";fr.className="fresh stale"}
+  else{fr.textContent=`آخرین داده: ${time(pen.last_slot)}`;fr.className="fresh"+(pen.stale_min>30?" stale":"");
+       if(pen.stale_min>30) fr.textContent+=" — دوربین یا پردازش متوقف شده؟"}
+  const names=SIG.flatMap(s=>[s.metric,s.extra].filter(Boolean)).join(",");
+  const [m, hm, ev, cams] = await Promise.all([
+    api(`/api/pens/${PEN}/metrics?names=${names}&hours=48`),
+    api(`/api/pens/${PEN}/heatmap`), api(`/api/events?pen=${PEN}&status=all&limit=30`),
+    api(`/api/pens/${PEN}/cameras`)]);
+  renderSignals(pen.signals, m.series);
+  renderPlan(hm);
+  renderEvents(ev.filter(e=>e.status!=="resolved"));
+  $("cams").innerHTML = cams.map(c=>c.image
+    ? `<figure><img src="${c.image}?t=${Date.now()}" alt="تصویر ${esc(c.camera)}" loading="lazy"><figcaption>${esc(c.camera)} — ${time(c.last_slot)}</figcaption></figure>`
+    : `<p class="empty">${esc(c.camera)}: تصویری نرسیده</p>`).join("");
+}
+
+function renderSignals(states, series){
+  $("signals").innerHTML = SIG.map(s=>{
+    const st=states[s.key]||{state:"learning"};
+    const mm=(st.metrics||{})[s.metric]||{};
+    let base="";
+    if(mm.baseline!=null) base=`حالت عادی همین سن و ساعت: ${s.fmt(mm.baseline)}`;
+    else if(s.key==="mortality") base=`${fa(st.candidates_watching||0)} مورد زیر نظر`;
+    else if(s.key==="circadian" && mm.value!=null){
+      const amp=(st.metrics||{}).rhythm_amplitude;
+      base=`۱ یعنی همان الگوی روزهای قبل — شدت ریتم: ${amp?pct(amp.value):"–"} حالت معمول`}
+    else base="برای مقایسه هنوز داده‌ی کافی از روزهای قبل نیست";
+    let extra="";
+    if(s.extra && s.extraLabel){const e=(st.metrics||{})[s.extra]; if(e) extra=` — ${s.extraLabel}: ${s.fmt(e.value)}`}
+    return `<div class="sig" data-state="${st.state}">
+      <span class="bar"></span>
+      <div><h3>${esc(st.title)} <span class="state">${STATE[st.state]||st.state}</span></h3>
+        <div class="val"><b>${s.fmt(mm.value)}</b>${s.label}${extra}</div>
+        <div class="val">${base}</div></div>
+      <canvas data-metric="${s.metric}" width="360" height="56" aria-label="روند ۴۸ ساعت ${esc(st.title)}"></canvas>
+    </div>`}).join("");
+  document.querySelectorAll(".sig canvas").forEach(c=>spark(c, series[c.dataset.metric]||[]));
+}
+
+function spark(cv, pts){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth||360, h=56;
+  cv.width=w*dpr; cv.height=h*dpr; const g=cv.getContext("2d"); g.scale(dpr,dpr);
+  const vals=pts.flatMap(p=>[p.v,p.b]).filter(v=>v!=null);
+  if(vals.length<2){g.fillStyle=css("--muted");g.font="12px Vazirmatn";g.textAlign="center";
+    g.fillText("داده‌ی کافی نیست",w/2,h/2+4);return}
+  const lo=Math.min(...vals), hi=Math.max(...vals), pad=4;
+  const t0=new Date(pts[0].t).getTime(), t1=new Date(pts[pts.length-1].t).getTime()||t0+1;
+  // RTL page, but time still runs left -> right like every chart the vet knows
+  const X=t=>pad+(w-2*pad)*((new Date(t).getTime()-t0)/Math.max(1,t1-t0));
+  const Y=v=>h-pad-(h-2*pad)*((v-lo)/Math.max(1e-9,hi-lo));
+  const line=(key,color,dash)=>{g.beginPath();g.setLineDash(dash);g.strokeStyle=color;g.lineWidth=dash.length?1:1.8;
+    let on=false;for(const p of pts){if(p[key]==null){on=false;continue}
+      on?g.lineTo(X(p.t),Y(p[key])):g.moveTo(X(p.t),Y(p[key]));on=true}g.stroke()};
+  line("b",css("--muted"),[3,3]); line("v",css("--ink"),[]);
+  g.setLineDash([]);
+  for(const p of pts){if(p.z!=null&&Math.abs(p.z)>=2){g.fillStyle=Math.abs(p.z)>=3?css("--crit"):css("--warn");
+    g.beginPath();g.arc(X(p.t),Y(p.v),2.5,0,7);g.fill()}}
+}
+
+function renderPlan(hm){
+  const cv=$("plan"), g=cv.getContext("2d");
+  if(!hm.grid){g.clearRect(0,0,cv.width,cv.height);$("planWhen").textContent="هنوز نقشه‌ای ساخته نشده";return}
+  const rows=hm.grid.length, cols=hm.grid[0].length;
+  const W=260, H=Math.round(W*hm.length_m/hm.width_m); cv.width=W; cv.height=H;
+  const cw=W/cols, ch=H/rows, mx=Math.max(0.05,...hm.grid.flat());
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const v=hm.grid[r][c];
+    if(v<0){g.fillStyle="#55606B";}
+    else{const a=Math.min(1,v/mx); // litter brown -> feather white
+      const R=Math.round(60+a*(245-60)),G=Math.round(48+a*(241-48)),B=Math.round(34+a*(230-34));
+      g.fillStyle=`rgb(${R},${G},${B})`}
+    g.fillRect(c*cw,r*ch,cw+0.5,ch+0.5)}
+  const sx=W/hm.width_m, sy=H/hm.length_m;
+  const ring=(c,col)=>{g.beginPath();g.ellipse(c.x*sx,c.y*sy,c.r*sx,c.r*sy,0,0,7);g.strokeStyle=col;g.lineWidth=2;g.stroke()};
+  hm.feeders.forEach(c=>ring(c,"#E8A33D")); hm.drinkers.forEach(c=>ring(c,"#3FA7D6"));
+  for(const c of hm.candidates){g.beginPath();g.arc(c.x_m*sx,c.y_m*sy,c.status==="alerted"?9:6,0,7);
+    g.fillStyle=c.status==="alerted"?"#F0544A":"rgba(240,84,74,.45)";g.fill();
+    g.strokeStyle="#fff";g.lineWidth=1.5;g.stroke()}
+  $("planWhen").textContent=`میانگین ۵ دقیقه‌ی ${time(hm.slot)} — بالای تصویر: انتهای سالن (دور از دوربین)`;
+}
+
+function renderEvents(evs){
+  if(!evs.length){$("events").innerHTML=`<p class="empty">هشدار بازی وجود ندارد. سیستم هر ۵ دقیقه گله را بررسی می‌کند.</p>`;return}
+  $("events").innerHTML=evs.map(e=>{
+    const d=e.details||{}, cand=d.candidate_id;
+    const acts=(d.actions||[]).map(a=>`<li>${esc(a)}</li>`).join("");
+    const shots=(e.snapshots||[]).map(s=>`<a href="/media/${s}" target="_blank"><img src="/media/${s}" alt="تصویر هشدار" loading="lazy"></a>`).join("");
+    const ackd=e.status==="acknowledged"?`<p class="meta">دیده‌شده توسط ${esc(e.ack_by)}: ${esc(e.ack_note)}</p>`:"";
+    const form=cand
+      ? `<form data-cand="${cand}" data-ev="${e.id}"><input name="by" placeholder="نام بازدیدکننده" required>
+          <input name="note" placeholder="یادداشت">
+          <button class="btn red" value="dead">مرغ تلف شده بود</button>
+          <button class="btn ghost" value="alive">زنده بود</button></form>`
+      : `<form data-ev="${e.id}"><input name="by" placeholder="نام (مرغدار / دامپزشک)" required>
+          <input name="note" placeholder="چه دیدید؟ چه کردید؟">
+          <button class="btn" value="ack">دیدم، بررسی می‌کنم</button>
+          <button class="btn ghost" value="resolve">برطرف شد</button></form>`;
+    return `<article class="ev ${e.severity} ${e.status}">
+      <header><span class="t">${esc(d.signal_title||e.signal)} — ${e.severity==="critical"?"بحرانی":"هشدار"}</span>
+        <span class="meta">${time(e.opened_ts)}${e.active?"":" · وضعیت به حالت عادی برگشته"}</span></header>
+      <p>${esc(e.message)}</p>${acts?`<ul>${acts}</ul>`:""}
+      ${shots?`<div class="shots">${shots}</div>`:""}${ackd}${form}</article>`}).join("");
+  document.querySelectorAll(".ev form").forEach(f=>f.addEventListener("submit",async ev=>{
+    ev.preventDefault(); const kind=ev.submitter?.value, fd=new FormData(f);
+    const by=fd.get("by"), note=fd.get("note");
+    try{
+      if(f.dataset.cand){await api(`/api/candidates/${f.dataset.cand}/resolve`,{method:"POST",
+          headers:{"Content-Type":"application/json"},body:JSON.stringify({outcome:kind,by,note})});
+        toast(kind==="dead"?"تلفات ثبت شد":"ثبت شد: مرغ زنده بود")}
+      else{await api(`/api/events/${f.dataset.ev}/ack`,{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({by,note,resolve:kind==="resolve"})});
+        toast(kind==="resolve"?"هشدار بسته شد":"هشدار دیده‌شده ثبت شد")}
+      load();
+    }catch(err){toast("ثبت نشد: "+err.message)}
+  }));
+}
+
+$("logForm").date.valueAsDate=new Date();
+$("logForm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); const f=new FormData(ev.target);
+  try{const r=await api("/api/daily-log",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({pen:PEN,date:f.get("date"),deaths:+f.get("deaths"),culls:+f.get("culls")||0,note:f.get("note")})});
+    toast(`تلفات ثبت شد (${fa(r.daily_mortality_pct,2)}٪ گله)`); load();
+  }catch(err){toast("ثبت نشد: "+err.message)}
+});
+
+load().catch(e=>{$("signals").innerHTML=`<p class="empty">اتصال به سرور برقرار نشد: ${esc(e.message)}</p>`});
+setInterval(()=>load().catch(()=>{}),60000);
+</script>
+</body>
+</html>

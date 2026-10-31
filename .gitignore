@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# farm data never goes to git
+data/*
+!data/samples/
+!data/README.md
+models/*.pt
+configs/farm.yaml
+configs/cameras/*.yaml
+!configs/cameras/*.example.yaml
+demo/
+preview.jpg

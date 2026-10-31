@@ -1,0 +1,42 @@
+# Camera calibration — cam1
+# Coordinates are in FULL-RESOLUTION image pixels (2304 x 1296 for these DVR exports).
+# A new "version" is needed whenever the camera is moved or re-aimed: the
+# samples in data/samples show the framing changed between Nov and Dec 2025.
+#
+# image_points[i] (pixel) corresponds to floor_points[i] (metres, pen coordinates).
+# Floor origin (0,0) = far-left corner as seen by the camera; x to the right, y toward the camera.
+#
+# THESE VALUES ARE ROUGH ESTIMATES FROM THE SAMPLE FRAMES.
+# Re-do them with:  pews calibrate --config configs/farm.yaml --camera cam1 --image <frame.png>
+
+camera_id: cam1
+versions:
+  - valid_from: "2025-11-01"
+    image_size: [2304, 1296]
+    image_points: [[700, 40], [1580, 40], [1985, 1296], [365, 1296]]
+    floor_points: [[0.0, 0.0], [2.6, 0.0], [2.6, 5.8], [0.0, 5.8]]
+    # analysis region: floor plus the bottom of the walls (birds press against them)
+    roi: [[680, 20], [1600, 20], [2010, 1296], [330, 1296]]
+    exclude:
+      - [[1640, 0], [2304, 0], [2304, 70], [1640, 70]]        # OSD timestamp
+      # white drinkers (chick stage) look like birds to the colour segmenter
+      - {circle: [882, 110, 55]}
+      - {circle: [1466, 190, 55]}
+      - {circle: [1138, 290, 55]}
+      - {circle: [800, 440, 60]}
+      - {circle: [1146, 680, 65]}
+      - {circle: [670, 1100, 75]}
+      - {circle: [1610, 1050, 75]}
+
+  - valid_from: "2025-12-01"
+    image_size: [2304, 1296]
+    image_points: [[600, 30], [1500, 30], [1905, 1296], [175, 1296]]
+    floor_points: [[0.0, 0.0], [2.6, 0.0], [2.6, 5.8], [0.0, 5.8]]
+    roi: [[575, 10], [1525, 10], [1945, 1296], [130, 1296]]
+    exclude:
+      - [[1640, 0], [2304, 0], [2304, 70], [1640, 70]]        # OSD timestamp
+      # white tube feeders
+      - [[1000, 0], [1120, 0], [1120, 120], [1000, 120]]
+      - [[995, 195], [1150, 195], [1150, 375], [995, 375]]
+      - [[995, 440], [1155, 440], [1155, 660], [995, 660]]
+      - [[935, 880], [1130, 880], [1130, 1130], [935, 1130]]
